@@ -151,8 +151,7 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-
+        import { getDatabase, ref, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
         // ⚠️ Замени на данные своего проекта Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyAfxfl7oncihM8TUHbfgi9lr95St-KNRX8",
@@ -190,24 +189,46 @@
             const li = e.target.closest('li');
             if (!li) return;
 
-            if (e.target.closest('.confirm-btn')) {
-                e.stopPropagation();
-                const songName = li.querySelector('.song-text').textContent;
+            //if (e.target.closest('.confirm-btn')) {
+                //e.stopPropagation();
+                //const songName = li.querySelector('.song-text').textContent;
 
                 // Отправляем выбранную песню в Firebase
-                set(ref(db, 'currentVote'), {
-                    song: songName,
-                    timestamp: Date.now()
-                });
+                //set(ref(db, 'currentVote'), {
+                    //song: songName,
+                    //timestamp: Date.now()
+                //});
 
                 // Визуально показываем подтверждение (локально)
-                document.querySelectorAll('#songList li.confirmed').forEach(item => {
-                    item.classList.remove('confirmed');
-                });
-                li.classList.add('confirmed');
+                //document.querySelectorAll('#songList li.confirmed').forEach(item => {
+                    //item.classList.remove('confirmed');
+                //});
+                //li.classList.add('confirmed');
+                //if (li.classList.contains('pre-selected')) {
+                    //li.classList.remove('pre-selected');
+                //}
+                //return;
+            if (e.target.closest('.confirm-btn')) {
+                e.stopPropagation();
+            const songName = li.querySelector('.song-text').textContent;
+
+            // Увеличиваем счётчик голосов для выбранной песни
+            const songVoteRef = ref(db, 'votes/' + songName);
+            runTransaction(songVoteRef, (currentCount) => {
+            // Если голосов ещё не было, начинаем с 0, иначе прибавляем 1
+            return (currentCount || 0) + 1;
+                }).catch((error) => {
+                console.error('Ошибка голосования:', error);
+            });
+
+                    // Визуально показываем подтверждение (локально)
+            document.querySelectorAll('#songList li.confirmed').forEach(item => {
+                item.classList.remove('confirmed');
+            });
+            li.classList.add('confirmed');
                 if (li.classList.contains('pre-selected')) {
-                    li.classList.remove('pre-selected');
-                }
+                li.classList.remove('pre-selected');
+            }
                 return;
             }
 
