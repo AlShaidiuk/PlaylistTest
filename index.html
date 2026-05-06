@@ -14,7 +14,6 @@
             min-height: 100vh;
             margin: 0;
             padding: 20px;
-            flex-direction: column;
         }
         .playlist {
             background-color: #ffffff;
@@ -23,7 +22,6 @@
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             max-width: 400px;
             width: 100%;
-            margin-bottom: 30px;
         }
         h1 {
             text-align: center;
@@ -35,37 +33,34 @@
         ol {
             padding-left: 20px;
             margin: 0;
+            list-style: decimal;
         }
         li {
             font-size: 18px;
-            padding: 10px 0;
+            padding: 12px 10px;
             border-bottom: 1px dashed #e0e0e0;
-            color: #555;
+            color: #333;
+            cursor: pointer;
+            transition: color 0.2s ease;
+            user-select: none;
         }
         li:last-child {
             border-bottom: none;
         }
-        .qr-container {
-            background: white;
-            padding: 20px;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            text-align: center;
+        /* Стиль для неактивной (выбранной) песни */
+        li.inactive {
+            color: #bbbbbb;
         }
-        .qr-container p {
-            margin: 0 0 10px;
-            color: #666;
-            font-size: 14px;
-        }
-        #qrcode {
-            display: inline-block;
+        /* Лёгкий эффект при наведении */
+        li:hover {
+            background-color: #fafafa;
         }
     </style>
 </head>
 <body>
     <div class="playlist">
         <h1>🎤 Что сегодня поем?</h1>
-        <ol>
+        <ol id="songList">
             <li>Песня трубадура</li>
             <li>Седьмой лепесток</li>
             <li>Выхода нет</li>
@@ -74,92 +69,20 @@
             <li>Родина</li>
             <li>Батарейка</li>
         </ol>
+        <p style="text-align: center; color: #888; font-size: 14px; margin-top: 20px;">
+            👆 Кликай на песню, чтобы отметить её
+        </p>
     </div>
 
-    <div class="qr-container">
-        <p>📱 Наведи камеру — откроется этот же список</p>
-        <div id="qrcode"></div>
-    </div>
-
-    <!-- Библиотека для генерации QR-кода -->
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script>
-        // Тот же HTML плейлиста, но без блока с QR-кодом (чистая страница)
-        const cleanHtml = `<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Что сегодня поем?</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f5f0e8;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
-        }
-        .playlist {
-            background-color: #ffffff;
-            padding: 30px 40px;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            max-width: 400px;
-            width: 100%;
-        }
-        h1 {
-            text-align: center;
-            color: #333;
-            margin-top: 0;
-            margin-bottom: 25px;
-            font-size: 28px;
-        }
-        ol {
-            padding-left: 20px;
-            margin: 0;
-        }
-        li {
-            font-size: 18px;
-            padding: 10px 0;
-            border-bottom: 1px dashed #e0e0e0;
-            color: #555;
-        }
-        li:last-child {
-            border-bottom: none;
-        }
-    </style>
-</head>
-<body>
-    <div class="playlist">
-        <h1>🎤 Что сегодня поем?</h1>
-        <ol>
-            <li>Песня трубадура</li>
-            <li>Седьмой лепесток</li>
-            <li>Выхода нет</li>
-            <li>Мой рок-н-ролл</li>
-            <li>Знаешь ли ты</li>
-            <li>Родина</li>
-            <li>Батарейка</li>
-        </ol>
-    </div>
-</body>
-</html>`;
+        // Получаем все элементы списка
+        const songs = document.querySelectorAll('#songList li');
 
-        // Преобразуем HTML в Base64 и создаём Data URI
-        const base64 = btoa(unescape(encodeURIComponent(cleanHtml)));
-        const dataUri = 'data:text/html;base64,' + base64;
-
-        // Генерируем QR-код
-        new QRCode(document.getElementById("qrcode"), {
-            text: dataUri,
-            width: 200,
-            height: 200,
-            colorDark: "#333333",
-            colorLight: "#ffffff",
-            correctLevel: QRCode.CorrectLevel.M
+        songs.forEach(song => {
+            song.addEventListener('click', function() {
+                // Переключаем класс 'inactive' при клике
+                this.classList.toggle('inactive');
+            });
         });
     </script>
 </body>
