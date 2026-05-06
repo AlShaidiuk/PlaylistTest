@@ -195,13 +195,9 @@
                 const songName = li.querySelector('.song-text').textContent;
 
                 // Отправляем выбранную песню в Firebase
-                import { getDatabase, ref, runTransaction } from "firebase/database";
-
-                // В обработчике подтверждения:
-                const songName = li.querySelector('.song-text').textContent;
-                const songVoteRef = ref(db, 'votes/' + songName);
-                    runTransaction(songVoteRef, (currentCount) => {
-                    return (currentCount || 0) + 1;
+                set(ref(db, 'currentVote'), {
+                    song: songName,
+                    timestamp: Date.now()
                 });
 
                 // Визуально показываем подтверждение (локально)
