@@ -73,7 +73,7 @@
         import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
         const firebaseConfig = {
-            // ⚠️ Те же настройки, что и в клиентской странице
+            // ⚠️ Тот же конфиг, что и в index.html
             apiKey: "AIzaSyAfxfl7oncihM8TUHbfgi9lr95St-KNRX8",
             authDomain: "songlisttestproj.firebaseapp.com",
             databaseURL: "https://songlisttestproj-default-rtdb.europe-west1.firebasedatabase.app",
@@ -96,16 +96,27 @@
             "Батарейка"
         ];
 
-        // Счётчик голосов: будем хранить объект { песня: количество }
-        // Используем отдельную ветку в базе для подсчёта голосов
-        const votesRef = ref(db, 'votes');
+        const votersRef = ref(db, 'voters');
 
-        function renderBars(votes) {
-            const total = Object.values(votes).reduce((sum, val) => sum + val, 0);
+        function renderBars(votersData) {
+            const votes = {};
+            songs.forEach(song => { votes[song] = 0; });
+
+            let total = 0;
+            // votersData – объект вида { deviceId: { song: "...", timestamp: ... }, ... }
+            if (votersData) {
+                Object.values(votersData).forEach(entry => {
+                    if (entry.song && votes.hasOwnProperty(entry.song)) {
+                        votes[entry.song]++;
+                        total++;
+                    }
+                });
+            }
+
             const container = document.getElementById('results');
             container.innerHTML = '';
             songs.forEach(song => {
-                const count = votes[song] || 0;
+                const count = votes[song];
                 const percent = total === 0 ? 0 : (count / total) * 100;
                 const html = `
                     <div class="song-bar">
@@ -125,17 +136,10 @@
             document.getElementById('totalVotes').textContent = `Всего голосов: ${total}`;
         }
 
-        // Инициализация и слушатель изменений
-        onValue(votesRef, (snapshot) => {
+        onValue(votersRef, (snapshot) => {
             const data = snapshot.val() || {};
             renderBars(data);
         });
-
-        // Функция для добавления голоса (вызывается клиентом)
-        // Но в клиентской странице мы просто overwrite currentVote.
-        // Лучше сделать так: клиент отправляет не currentVote, а увеличивает счётчик конкретной песни.
-        // Поэтому доработаем клиентскую страницу: при подтверждении отправим транзакцию.
-        // Ниже я дам обновлённый скрипт для клиента, который увеличивает счётчик.
     </script>
 </body>
 </html>
