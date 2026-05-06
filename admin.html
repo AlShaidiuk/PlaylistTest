@@ -27,6 +27,21 @@
             text-align: center;
             margin-top: 0;
         }
+        .reset-btn {
+            display: block;
+            margin: 0 auto 25px;
+            padding: 10px 25px;
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.2s;
+        }
+        .reset-btn:hover {
+            background-color: #c0392b;
+        }
         .song-bar {
             margin-bottom: 20px;
         }
@@ -64,16 +79,17 @@
 <body>
     <div class="admin-panel">
         <h1>📊 Результаты голосования</h1>
+        <button id="resetBtn" class="reset-btn">🗑 Сбросить все голоса</button>
         <div id="results"></div>
         <div class="total-votes" id="totalVotes">Всего голосов: 0</div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+        import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
+        // ⚠️ Замени на свой конфиг Firebase (тот же, что и в index.html)
         const firebaseConfig = {
-            // ⚠️ Тот же конфиг, что и в index.html
             apiKey: "AIzaSyAfxfl7oncihM8TUHbfgi9lr95St-KNRX8",
             authDomain: "songlisttestproj.firebaseapp.com",
             databaseURL: "https://songlisttestproj-default-rtdb.europe-west1.firebasedatabase.app",
@@ -97,13 +113,15 @@
         ];
 
         const votersRef = ref(db, 'voters');
+        const resultsDiv = document.getElementById('results');
+        const totalVotesSpan = document.getElementById('totalVotes');
 
+        // Функция отрисовки прогресс-баров
         function renderBars(votersData) {
             const votes = {};
             songs.forEach(song => { votes[song] = 0; });
 
             let total = 0;
-            // votersData – объект вида { deviceId: { song: "...", timestamp: ... }, ... }
             if (votersData) {
                 Object.values(votersData).forEach(entry => {
                     if (entry.song && votes.hasOwnProperty(entry.song)) {
@@ -113,8 +131,7 @@
                 });
             }
 
-            const container = document.getElementById('results');
-            container.innerHTML = '';
+            resultsDiv.innerHTML = '';
             songs.forEach(song => {
                 const count = votes[song];
                 const percent = total === 0 ? 0 : (count / total) * 100;
@@ -131,14 +148,27 @@
                         </div>
                     </div>
                 `;
-                container.innerHTML += html;
+                resultsDiv.innerHTML += html;
             });
-            document.getElementById('totalVotes').textContent = `Всего голосов: ${total}`;
+            totalVotesSpan.textContent = `Всего голосов: ${total}`;
         }
 
+        // Слушаем изменения в реальном времени
         onValue(votersRef, (snapshot) => {
-            const data = snapshot.val() || {};
-            renderBars(data);
+            renderBars(snapshot.val() || {});
+        });
+
+        // Обработчик кнопки сброса
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            if (confirm('Вы уверены? Все голоса будут удалены, и все участники смогут проголосовать заново.')) {
+                set(votersRef, null)  // запись null удаляет всю ветку
+                    .then(() => {
+                        alert('Голоса успешно сброшены.');
+                    })
+                    .catch(err => {
+                        alert('Ошибка при сбросе: ' + err.message);
+                    });
+            }
         });
     </script>
 </body>
