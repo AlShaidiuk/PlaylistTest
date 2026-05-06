@@ -5,16 +5,147 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Что сегодня поем?</title>
     <style>
-        /* Здесь оставь те же стили, что в предыдущем ответе (без изменений) */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f0e8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .playlist {
+            background-color: #ffffff;
+            padding: 30px 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 100%;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-top: 0;
+            margin-bottom: 25px;
+            font-size: 28px;
+        }
+        ol {
+            padding-left: 20px;
+            margin: 0;
+            list-style: decimal;
+        }
+        li {
+            font-size: 18px;
+            padding: 12px 10px;
+            border-bottom: 1px dashed #e0e0e0;
+            color: #333;
+            cursor: pointer;
+            transition: color 0.2s ease, background-color 0.2s ease;
+            user-select: none;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        li:last-child {
+            border-bottom: none;
+        }
+        li.pre-selected {
+            color: #999999;
+            background-color: #f9f9f9;
+        }
+        li.confirmed {
+            color: #555555;
+            background-color: #f0f0f0;
+            cursor: default;
+        }
+        .confirm-btn {
+            background: none;
+            border: 2px solid #4CAF50;
+            color: #4CAF50;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            font-size: 18px;
+            line-height: 1;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+            margin-left: 15px;
+            flex-shrink: 0;
+        }
+        .confirm-btn:hover {
+            background-color: #4CAF50;
+            color: white;
+        }
+        li.pre-selected .confirm-btn {
+            display: flex;
+        }
+        .confirmed-icon {
+            display: none;
+            color: #4CAF50;
+            font-size: 20px;
+            margin-left: 15px;
+            flex-shrink: 0;
+        }
+        li.confirmed .confirmed-icon {
+            display: block;
+        }
+        .instruction {
+            text-align: center;
+            color: #888;
+            font-size: 14px;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
     <div class="playlist">
         <h1>🎤 Что сегодня поем?</h1>
         <ol id="songList">
-            <!-- те же песни, что и раньше -->
+            <li>
+                <span class="song-text">Песня трубадура</span>
+                <button class="confirm-btn" title="Подтвердить выбор">✓</button>
+                <span class="confirmed-icon">✓</span>
+            </li>
+            <li>
+                <span class="song-text">Седьмой лепесток</span>
+                <button class="confirm-btn" title="Подтвердить выбор">✓</button>
+                <span class="confirmed-icon">✓</span>
+            </li>
+            <li>
+                <span class="song-text">Выхода нет</span>
+                <button class="confirm-btn" title="Подтвердить выбор">✓</button>
+                <span class="confirmed-icon">✓</span>
+            </li>
+            <li>
+                <span class="song-text">Мой рок-н-ролл</span>
+                <button class="confirm-btn" title="Подтвердить выбор">✓</button>
+                <span class="confirmed-icon">✓</span>
+            </li>
+            <li>
+                <span class="song-text">Знаешь ли ты</span>
+                <button class="confirm-btn" title="Подтвердить выбор">✓</button>
+                <span class="confirmed-icon">✓</span>
+            </li>
+            <li>
+                <span class="song-text">Родина</span>
+                <button class="confirm-btn" title="Подтвердить выбор">✓</button>
+                <span class="confirmed-icon">✓</span>
+            </li>
+            <li>
+                <span class="song-text">Батарейка</span>
+                <button class="confirm-btn" title="Подтвердить выбор">✓</button>
+                <span class="confirmed-icon">✓</span>
+            </li>
         </ol>
-        <p class="instruction">...</p>
+        <p class="instruction">
+            👆 Кликни на песню для предварительного выбора, затем нажми ✓ чтобы подтвердить.<br>
+            📌 Только одна песня может быть подтверждена.
+        </p>
     </div>
 
     <!-- Firebase SDK -->
@@ -79,6 +210,52 @@
                 }
                 return;
             }
+
+            const songList = document.getElementById('songList');
+
+        songList.addEventListener('click', function(e) {
+            const li = e.target.closest('li');
+            if (!li) return;
+
+            // Если клик по кнопке подтверждения
+            if (e.target.closest('.confirm-btn')) {
+                e.stopPropagation();
+
+                // Снимаем подтверждение со всех песен
+                document.querySelectorAll('#songList li.confirmed').forEach(item => {
+                    item.classList.remove('confirmed');
+                });
+
+                // Убираем предвыбор со всех, кроме текущей (чтобы не осталось лишних)
+                document.querySelectorAll('#songList li.pre-selected').forEach(item => {
+                    item.classList.remove('pre-selected');
+                });
+
+                // Подтверждаем текущую (если она была в предвыборе)
+                if (li.classList.contains('pre-selected')) {
+                    li.classList.remove('pre-selected');
+                }
+                li.classList.add('confirmed');
+                return;
+            }
+
+            // Если песня уже подтверждена — ничего не делаем
+            if (li.classList.contains('confirmed')) {
+                return;
+            }
+
+            // Если песня уже в предвыборе — снимаем предвыбор (отмена)
+            if (li.classList.contains('pre-selected')) {
+                li.classList.remove('pre-selected');
+                return;
+            }
+
+            // Иначе: снимаем предвыбор со всех и добавляем на текущую
+            document.querySelectorAll('#songList li.pre-selected').forEach(item => {
+                item.classList.remove('pre-selected');
+            });
+            li.classList.add('pre-selected');
+        });
 
             // Логика предвыбора остаётся локальной
             // ... (аналогично предыдущему коду, без изменений)
