@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Что сегодня поем?</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f0e8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            flex-direction: column;
+        }
+        .playlist {
+            background-color: #ffffff;
+            padding: 30px 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            width: 100%;
+            margin-bottom: 30px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-top: 0;
+            margin-bottom: 25px;
+            font-size: 28px;
+        }
+        ol {
+            padding-left: 20px;
+            margin: 0;
+        }
+        li {
+            font-size: 18px;
+            padding: 10px 0;
+            border-bottom: 1px dashed #e0e0e0;
+            color: #555;
+        }
+        li:last-child {
+            border-bottom: none;
+        }
+        .qr-container {
+            background: white;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        .qr-container p {
+            margin: 0 0 10px;
+            color: #666;
+            font-size: 14px;
+        }
+        #qrcode {
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="playlist">
+        <h1>🎤 Что сегодня поем?</h1>
+        <ol>
+            <li>Песня трубадура</li>
+            <li>Седьмой лепесток</li>
+            <li>Выхода нет</li>
+            <li>Мой рок-н-ролл</li>
+            <li>Знаешь ли ты</li>
+            <li>Родина</li>
+            <li>Батарейка</li>
+        </ol>
+    </div>
+
+    <div class="qr-container">
+        <p>📱 Наведи камеру — откроется этот же список</p>
+        <div id="qrcode"></div>
+    </div>
+
+    <!-- Библиотека для генерации QR-кода -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script>
+        // Тот же HTML плейлиста, но без блока с QR-кодом (чистая страница)
+        const cleanHtml = `<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Что сегодня поем?</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f0e8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .playlist {
+            background-color: #ffffff;
+            padding: 30px 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            width: 100%;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-top: 0;
+            margin-bottom: 25px;
+            font-size: 28px;
+        }
+        ol {
+            padding-left: 20px;
+            margin: 0;
+        }
+        li {
+            font-size: 18px;
+            padding: 10px 0;
+            border-bottom: 1px dashed #e0e0e0;
+            color: #555;
+        }
+        li:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="playlist">
+        <h1>🎤 Что сегодня поем?</h1>
+        <ol>
+            <li>Песня трубадура</li>
+            <li>Седьмой лепесток</li>
+            <li>Выхода нет</li>
+            <li>Мой рок-н-ролл</li>
+            <li>Знаешь ли ты</li>
+            <li>Родина</li>
+            <li>Батарейка</li>
+        </ol>
+    </div>
+</body>
+</html>`;
+
+        // Преобразуем HTML в Base64 и создаём Data URI
+        const base64 = btoa(unescape(encodeURIComponent(cleanHtml)));
+        const dataUri = 'data:text/html;base64,' + base64;
+
+        // Генерируем QR-код
+        new QRCode(document.getElementById("qrcode"), {
+            text: dataUri,
+            width: 200,
+            height: 200,
+            colorDark: "#333333",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.M
+        });
+    </script>
+</body>
+</html>
