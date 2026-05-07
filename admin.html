@@ -125,6 +125,7 @@
 
         const votersRef = ref(db, 'voters');
         const songsRef = ref(db, 'playlist/songs');
+        const nextNumberRef = ref(db, 'metadata/nextNumber');
         const resultsDiv = document.getElementById('results');
         const totalVotesSpan = document.getElementById('totalVotes');
         const drawResultDiv = document.getElementById('drawResult');
@@ -249,14 +250,15 @@
 
         // Сброс голосов
         document.getElementById('resetBtn').addEventListener('click', () => {
-            if (confirm('Сбросить все голоса? Участники смогут проголосовать заново.')) {
-                set(votersRef, null)
-                    .then(() => {
-                        alert('Голоса сброшены.');
-                        drawResultDiv.style.display = 'none';
-                    })
-                    .catch(err => alert('Ошибка: ' + err.message));
-            }
+    if (confirm('Сбросить все голоса? Участники смогут проголосовать заново.')) {
+        set(votersRef, null)
+            .then(() => set(nextNumberRef, null))
+            .then(() => {
+                alert('Голоса и номера сброшены.');
+                drawResultDiv.style.display = 'none';
+            })
+            .catch(err => alert('Ошибка: ' + err.message));
+    }
         });
     </script>
 </body>
