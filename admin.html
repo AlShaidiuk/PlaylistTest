@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Админка – Голосование</title>
     <style>
+        /* Твои прежние стили для админки (с progress-bar и т.д.) */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f5f0e8;
@@ -88,7 +89,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
         import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-        // ⚠️ Замени на свой конфиг Firebase (тот же, что и в index.html)
         const firebaseConfig = {
             apiKey: "AIzaSyAfxfl7oncihM8TUHbfgi9lr95St-KNRX8",
             authDomain: "songlisttestproj.firebaseapp.com",
@@ -102,43 +102,56 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        const songs = [
-            "Песня трубадура",
-            "Седьмой лепесток",
-            "Выхода нет",
-            "Мой рок-н-ролл",
-            "Знаешь ли ты",
-            "Родина",
-            "Батарейка"
-        ];
-
         const votersRef = ref(db, 'voters');
+        const songsRef = ref(db, 'playlist/songs');
         const resultsDiv = document.getElementById('results');
         const totalVotesSpan = document.getElementById('totalVotes');
 
-        // Функция отрисовки прогресс-баров
-        function renderBars(votersData) {
-            const votes = {};
-            songs.forEach(song => { votes[song] = 0; });
+        let currentSongs = [];
 
-            let total = 0;
-            if (votersData) {
-                Object.values(votersData).forEach(entry => {
-                    if (entry.song && votes.hasOwnProperty(entry.song)) {
-                        votes[entry.song]++;
-                        total++;
-                    }
-                });
+        // Получаем актуальный список песен
+        onValue(songsRef, (snapshot) => {
+            currentSongs = snapshot.val() || [];
+            // При изменении списка песен – перерисовать (даже если голоса ещё не загрузились)
+            if (window.lastVotersData) {
+                renderBars(window.lastVotersData);
+            }
+        });
+
+        // Слушаем голоса
+        onValue(votersRef, (snapshot) => {
+            const votersData = snapshot.val() || {};
+            window.lastVotersData = votersData;
+            renderBars(votersData);
+        });
+
+        function renderBars(votersData) {
+            if (!currentSongs.length) {
+                resultsDiv.innerHTML = '<p style="text-align:center">Нет песен для отображения</p>';
+                totalVotesSpan.textContent = 'Всего голосов: 0';
+                return;
             }
 
+            const votes = {};
+            currentSongs.forEach(song => { votes[song] = 0; });
+
+            let total = 0;
+            Object.values(votersData).forEach(entry => {
+                if (entry.song && votes.hasOwnProperty(entry.song)) {
+                    votes[entry.song]++;
+                    total++;
+                }
+                // Голоса за удалённые песни игнорируются
+            });
+
             resultsDiv.innerHTML = '';
-            songs.forEach(song => {
+            currentSongs.forEach(song => {
                 const count = votes[song];
                 const percent = total === 0 ? 0 : (count / total) * 100;
                 const html = `
                     <div class="song-bar">
                         <div class="song-label">
-                            <span>${song}</span>
+                            <span>${song.replace(/</g, '&lt;')}</span>
                             <span>${count} голос(ов)</span>
                         </div>
                         <div class="progress">
@@ -153,21 +166,12 @@
             totalVotesSpan.textContent = `Всего голосов: ${total}`;
         }
 
-        // Слушаем изменения в реальном времени
-        onValue(votersRef, (snapshot) => {
-            renderBars(snapshot.val() || {});
-        });
-
-        // Обработчик кнопки сброса
+        // Сброс голосов
         document.getElementById('resetBtn').addEventListener('click', () => {
-            if (confirm('Вы уверены? Все голоса будут удалены, и все участники смогут проголосовать заново.')) {
-                set(votersRef, null)  // запись null удаляет всю ветку
-                    .then(() => {
-                        alert('Голоса успешно сброшены.');
-                    })
-                    .catch(err => {
-                        alert('Ошибка при сбросе: ' + err.message);
-                    });
+            if (confirm('Сбросить все голоса? Участники смогут проголосовать заново.')) {
+                set(votersRef, null)
+                    .then(() => alert('Голоса сброшены.'))
+                    .catch(err => alert('Ошибка: ' + err.message));
             }
         });
     </script>
