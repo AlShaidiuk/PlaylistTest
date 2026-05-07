@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Админка – Голосование</title>
     <style>
-        /* Твои прежние стили для админки (с progress-bar и т.д.) */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f5f0e8;
@@ -28,11 +27,10 @@
             text-align: center;
             margin-top: 0;
         }
-        .reset-btn {
+        .reset-btn, .draw-btn {
             display: block;
-            margin: 0 auto 25px;
-            padding: 10px 25px;
-            background-color: #e74c3c;
+            margin: 10px auto;
+            padding: 12px 25px;
             color: white;
             border: none;
             border-radius: 8px;
@@ -40,8 +38,17 @@
             font-size: 16px;
             transition: background-color 0.2s;
         }
+        .reset-btn {
+            background-color: #e74c3c;
+        }
         .reset-btn:hover {
             background-color: #c0392b;
+        }
+        .draw-btn {
+            background-color: #3498db;
+        }
+        .draw-btn:hover {
+            background-color: #2980b9;
         }
         .song-bar {
             margin-bottom: 20px;
@@ -72,8 +79,19 @@
         }
         .total-votes {
             text-align: center;
-            margin-top: 20px;
+            margin: 20px 0;
             font-size: 18px;
+        }
+        .draw-result {
+            text-align: center;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f0f9ff;
+            border-radius: 10px;
+            font-size: 18px;
+        }
+        .draw-result strong {
+            color: #2c3e50;
         }
     </style>
 </head>
@@ -81,14 +99,17 @@
     <div class="admin-panel">
         <h1>📊 Результаты голосования</h1>
         <button id="resetBtn" class="reset-btn">🗑 Сбросить все голоса</button>
+        <button id="drawBtn" class="draw-btn">🎤 Кто будет петь?</button>
         <div id="results"></div>
         <div class="total-votes" id="totalVotes">Всего голосов: 0</div>
+        <div id="drawResult" class="draw-result" style="display: none;"></div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
         import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
+        // ⚠️ Замени на свой конфиг Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyAfxfl7oncihM8TUHbfgi9lr95St-KNRX8",
             authDomain: "songlisttestproj.firebaseapp.com",
@@ -106,23 +127,23 @@
         const songsRef = ref(db, 'playlist/songs');
         const resultsDiv = document.getElementById('results');
         const totalVotesSpan = document.getElementById('totalVotes');
+        const drawResultDiv = document.getElementById('drawResult');
 
         let currentSongs = [];
+        let lastVotersData = null;
 
         // Получаем актуальный список песен
         onValue(songsRef, (snapshot) => {
             currentSongs = snapshot.val() || [];
-            // При изменении списка песен – перерисовать (даже если голоса ещё не загрузились)
-            if (window.lastVotersData) {
-                renderBars(window.lastVotersData);
+            if (lastVotersData) {
+                renderBars(lastVotersData);
             }
         });
 
         // Слушаем голоса
         onValue(votersRef, (snapshot) => {
-            const votersData = snapshot.val() || {};
-            window.lastVotersData = votersData;
-            renderBars(votersData);
+            lastVotersData = snapshot.val() || {};
+            renderBars(lastVotersData);
         });
 
         function renderBars(votersData) {
@@ -136,13 +157,14 @@
             currentSongs.forEach(song => { votes[song] = 0; });
 
             let total = 0;
-            Object.values(votersData).forEach(entry => {
-                if (entry.song && votes.hasOwnProperty(entry.song)) {
-                    votes[entry.song]++;
-                    total++;
-                }
-                // Голоса за удалённые песни игнорируются
-            });
+            if (votersData) {
+                Object.values(votersData).forEach(entry => {
+                    if (entry.song && votes.hasOwnProperty(entry.song)) {
+                        votes[entry.song]++;
+                        total++;
+                    }
+                });
+            }
 
             resultsDiv.innerHTML = '';
             currentSongs.forEach(song => {
@@ -166,11 +188,73 @@
             totalVotesSpan.textContent = `Всего голосов: ${total}`;
         }
 
+        // Кнопка "Кто будет петь?"
+        document.getElementById('drawBtn').addEventListener('click', () => {
+            if (!lastVotersData || Object.keys(lastVotersData).length === 0) {
+                drawResultDiv.style.display = 'block';
+                drawResultDiv.innerHTML = 'Нет голосов для выбора.';
+                return;
+            }
+
+            // Подсчёт голосов по песням
+            const songVotes = {};
+            Object.values(lastVotersData).forEach(entry => {
+                if (entry.song) {
+                    songVotes[entry.song] = (songVotes[entry.song] || 0) + 1;
+                }
+            });
+
+            if (Object.keys(songVotes).length === 0) {
+                drawResultDiv.style.display = 'block';
+                drawResultDiv.innerHTML = 'Нет песен с голосами.';
+                return;
+            }
+
+            // Определяем максимальное число голосов
+            const maxVotes = Math.max(...Object.values(songVotes));
+            // Находим все песни с таким количеством голосов
+            const topSongs = Object.entries(songVotes)
+                .filter(([song, count]) => count === maxVotes)
+                .map(([song]) => song);
+
+            // Собираем всех проголосовавших за эти песни
+            const candidates = [];
+            Object.entries(lastVotersData).forEach(([deviceId, entry]) => {
+                if (topSongs.includes(entry.song)) {
+                    candidates.push({
+                        deviceId: deviceId,
+                        number: entry.number || 'без номера',
+                        song: entry.song
+                    });
+                }
+            });
+
+            if (candidates.length === 0) {
+                drawResultDiv.style.display = 'block';
+                drawResultDiv.innerHTML = 'Нет участников, проголосовавших за лидирующие песни.';
+                return;
+            }
+
+            // Случайный выбор
+            const randomIndex = Math.floor(Math.random() * candidates.length);
+            const winner = candidates[randomIndex];
+
+            // Показываем результат
+            drawResultDiv.style.display = 'block';
+            drawResultDiv.innerHTML = `
+                🎉 Сегодня поёт: <strong>${winner.song}</strong><br>
+                Участник номер <strong>${winner.number}</strong> (ID: ${winner.deviceId})
+            `;
+        });
+
         // Сброс голосов
         document.getElementById('resetBtn').addEventListener('click', () => {
             if (confirm('Сбросить все голоса? Участники смогут проголосовать заново.')) {
                 set(votersRef, null)
-                    .then(() => alert('Голоса сброшены.'))
+                    .then(() => {
+                        alert('Голоса сброшены.');
+                        drawResultDiv.style.display = 'none';
+                    })
                     .catch(err => alert('Ошибка: ' + err.message));
             }
         });
