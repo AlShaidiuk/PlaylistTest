@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Что сегодня поем?</title>
     <style>
+        /* Стили остаются те же, что и раньше */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f5f0e8;
@@ -106,33 +107,22 @@
             font-size: 14px;
             color: #e74c3c;
         }
+        /* ... (весь твой CSS без изменений) */
     </style>
 </head>
 <body>
     <div class="playlist">
         <h1>🎤 Что сегодня поем?</h1>
-        <ol id="songList">
-            <li><span class="song-text">Песня трубадура</span><button class="confirm-btn">✓</button><span class="confirmed-icon">✓</span></li>
-            <li><span class="song-text">Седьмой лепесток</span><button class="confirm-btn">✓</button><span class="confirmed-icon">✓</span></li>
-            <li><span class="song-text">Выхода нет</span><button class="confirm-btn">✓</button><span class="confirmed-icon">✓</span></li>
-            <li><span class="song-text">Мой рок-н-ролл</span><button class="confirm-btn">✓</button><span class="confirmed-icon">✓</span></li>
-            <li><span class="song-text">Знаешь ли ты</span><button class="confirm-btn">✓</button><span class="confirmed-icon">✓</span></li>
-            <li><span class="song-text">Родина</span><button class="confirm-btn">✓</button><span class="confirmed-icon">✓</span></li>
-            <li><span class="song-text">Батарейка</span><button class="confirm-btn">✓</button><span class="confirmed-icon">✓</span></li>
-        </ol>
-        <p class="instruction">
-            👆 Кликни на песню для предварительного выбора, затем нажми ✓ чтобы подтвердить.<br>
-            Голос можно отдать только один раз.
-        </p>
+        <ol id="songList"></ol>
+        <p class="instruction">👆 Кликни на песню, чтобы выбрать, затем ✓ чтобы подтвердить.</p>
         <div class="message" id="message"></div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-        import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+        import { getDatabase, ref, onValue, get, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
         const firebaseConfig = {
-            // ⚠️ Вставь сюда СВОЙ конфиг Firebase
             apiKey: "AIzaSyAfxfl7oncihM8TUHbfgi9lr95St-KNRX8",
             authDomain: "songlisttestproj.firebaseapp.com",
             databaseURL: "https://songlisttestproj-default-rtdb.europe-west1.firebasedatabase.app",
@@ -145,92 +135,101 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // Генерируем или получаем ID устройства
+        const songsRef = ref(db, 'playlist/songs');
+        const votersRef = ref(db, 'voters');
+        const songList = document.getElementById('songList');
+        const messageDiv = document.getElementById('message');
+
         let deviceId = localStorage.getItem('voterDeviceId');
         if (!deviceId) {
             deviceId = 'device_' + Math.random().toString(36).substr(2, 9);
             localStorage.setItem('voterDeviceId', deviceId);
         }
-
-        const songList = document.getElementById('songList');
-        const messageDiv = document.getElementById('message');
-
-        // Проверяем, не голосовало ли уже это устройство (при загрузке)
         const voterRef = ref(db, 'voters/' + deviceId);
-        get(voterRef).then((snapshot) => {
+
+        let currentSongs = [];
+        let votedSong = null;
+
+        // Проверяем, голосовал ли уже этот девайс
+        get(voterRef).then(snapshot => {
             if (snapshot.exists()) {
-                // Устройство уже голосовало – подсвечиваем выбранную песню и блокируем
-                const chosenSong = snapshot.val().song;
-                document.querySelectorAll('#songList li').forEach(li => {
-                    li.style.cursor = 'default';
-                    if (li.querySelector('.song-text').textContent === chosenSong) {
-                        li.classList.add('confirmed');
-                    }
-                });
-                messageDiv.textContent = 'Вы уже проголосовали за: ' + chosenSong;
-                disableVoting();
+                votedSong = snapshot.val().song;
             }
         });
 
-        // Основной обработчик кликов
+        // Слушаем изменения плейлиста
+        onValue(songsRef, (snapshot) => {
+            const songs = snapshot.val() || [];
+            currentSongs = songs;
+            renderSongList(songs);
+        });
+
+        function renderSongList(songs) {
+            songList.innerHTML = '';
+            songs.forEach((songName, idx) => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span class="song-text">${songName.replace(/</g, '&lt;')}</span>
+                    <button class="confirm-btn">✓</button>
+                    <span class="confirmed-icon">✓</span>
+                `;
+                // Если устройство уже голосовало за эту песню – сразу подсвечиваем как подтверждённую
+                if (votedSong === songName) {
+                    li.classList.add('confirmed');
+                }
+                songList.appendChild(li);
+            });
+            // Блокируем все строки, если голос уже отдан
+            if (votedSong) {
+                document.querySelectorAll('#songList li').forEach(li => li.style.cursor = 'default');
+                messageDiv.textContent = 'Вы уже проголосовали за: ' + votedSong;
+            } else {
+                messageDiv.textContent = '';
+            }
+        }
+
+        // Делегирование кликов
         songList.addEventListener('click', function(e) {
             const li = e.target.closest('li');
             if (!li) return;
 
-            // Если голосование заблокировано (уже голосовали) — ничего не делаем
-            if (li.style.cursor === 'default') return;
+            // Если голос уже отдан
+            if (votedSong) return;
+
+            const songName = li.querySelector('.song-text').textContent;
 
             // Клик по кнопке подтверждения
             if (e.target.closest('.confirm-btn')) {
                 e.stopPropagation();
-                const songName = li.querySelector('.song-text').textContent;
+                if (votedSong) return;
 
-                // Проверяем, нет ли уже голоса от этого устройства
-                get(voterRef).then((snapshot) => {
-                    if (snapshot.exists()) {
-                        messageDiv.textContent = 'Вы уже голосовали!';
-                        return;
-                    }
-                    // Записываем голос
-                    set(voterRef, {
-                        song: songName,
-                        timestamp: Date.now()
-                    }).then(() => {
-                        // Визуальное подтверждение
-                        document.querySelectorAll('#songList li.pre-selected').forEach(item => {
-                            item.classList.remove('pre-selected');
+                // Записываем голос
+                set(voterRef, { song: songName, timestamp: Date.now() })
+                    .then(() => {
+                        votedSong = songName;
+                        // Обновляем визуал
+                        document.querySelectorAll('#songList li').forEach(item => {
+                            item.classList.remove('pre-selected', 'confirmed');
+                            item.style.cursor = 'default';
                         });
                         li.classList.add('confirmed');
                         messageDiv.textContent = 'Спасибо, ваш голос учтён!';
-                        // Блокируем все песни
-                        disableVoting();
-                    }).catch((error) => {
-                        messageDiv.textContent = 'Ошибка: ' + error.message;
+                    })
+                    .catch(err => {
+                        messageDiv.textContent = 'Ошибка: ' + err.message;
                     });
-                });
                 return;
             }
 
-            // Логика предварительного выбора (только если голосование ещё разрешено)
+            // Логика предвыбора
             if (li.classList.contains('confirmed')) return;
-
             if (li.classList.contains('pre-selected')) {
                 li.classList.remove('pre-selected');
-                return;
+            } else {
+                document.querySelectorAll('#songList li.pre-selected').forEach(item => item.classList.remove('pre-selected'));
+                li.classList.add('pre-selected');
             }
-
-            document.querySelectorAll('#songList li.pre-selected').forEach(item => {
-                item.classList.remove('pre-selected');
-            });
-            li.classList.add('pre-selected');
         });
-
-        function disableVoting() {
-            document.querySelectorAll('#songList li').forEach(li => {
-                li.style.cursor = 'default';
-                li.classList.remove('pre-selected');
-            });
-        }
     </script>
 </body>
 </html>
