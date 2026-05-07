@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Что сегодня поем?</title>
     <style>
-        /* Стили остаются те же, что и раньше */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f5f0e8;
@@ -104,10 +103,15 @@
         .message {
             text-align: center;
             margin-top: 15px;
-            font-size: 14px;
+            font-size: 16px;
             color: #e74c3c;
         }
-        /* ... (весь твой CSS без изменений) */
+        .voter-number {
+            text-align: center;
+            font-size: 20px;
+            color: #2ecc71;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -116,12 +120,14 @@
         <ol id="songList"></ol>
         <p class="instruction">👆 Кликни на песню, чтобы выбрать, затем ✓ чтобы подтвердить.</p>
         <div class="message" id="message"></div>
+        <div class="voter-number" id="voterNumber"></div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-        import { getDatabase, ref, onValue, get, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+        import { getDatabase, ref, onValue, get, set, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
+        // ⚠️ Вставь СВОЙ конфиг Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyAfxfl7oncihM8TUHbfgi9lr95St-KNRX8",
             authDomain: "songlisttestproj.firebaseapp.com",
@@ -137,9 +143,14 @@
 
         const songsRef = ref(db, 'playlist/songs');
         const votersRef = ref(db, 'voters');
+        const nextNumberRef = ref(db, 'metadata/nextNumber');
+        const MAX_VOTERS = 200;
+
         const songList = document.getElementById('songList');
         const messageDiv = document.getElementById('message');
+        const voterNumberDiv = document.getElementById('voterNumber');
 
+        // Генерируем или восстанавливаем ID устройства
         let deviceId = localStorage.getItem('voterDeviceId');
         if (!deviceId) {
             deviceId = 'device_' + Math.random().toString(36).substr(2, 9);
@@ -149,51 +160,72 @@
 
         let currentSongs = [];
         let votedSong = null;
+        let myVoterNumber = null;
 
-        // Проверяем, голосовал ли уже этот девайс
+        // Проверяем, голосовало ли устройство ранее (данные в localStorage)
+        const storedVote = localStorage.getItem('voterData');
+        if (storedVote) {
+            const parsed = JSON.parse(storedVote);
+            votedSong = parsed.song;
+            myVoterNumber = parsed.number;
+        }
+
+        // Проверяем актуальность голоса в базе (вдруг админ сбросил?)
         get(voterRef).then(snapshot => {
             if (snapshot.exists()) {
-                votedSong = snapshot.val().song;
+                const data = snapshot.val();
+                votedSong = data.song;
+                myVoterNumber = data.number;
+                localStorage.setItem('voterData', JSON.stringify({ song: votedSong, number: myVoterNumber }));
+            } else {
+                // Если в базе нет записи, но в localStorage есть — значит сбросили
+                if (votedSong) {
+                    localStorage.removeItem('voterData');
+                    votedSong = null;
+                    myVoterNumber = null;
+                }
             }
         });
 
-        // Слушаем изменения плейлиста
+        // Обновление списка песен
         onValue(songsRef, (snapshot) => {
-            const songs = snapshot.val() || [];
-            currentSongs = songs;
-            renderSongList(songs);
+            currentSongs = snapshot.val() || [];
+            renderSongList(currentSongs);
         });
 
         function renderSongList(songs) {
             songList.innerHTML = '';
-            songs.forEach((songName, idx) => {
+            songs.forEach(songName => {
                 const li = document.createElement('li');
                 li.innerHTML = `
                     <span class="song-text">${songName.replace(/</g, '&lt;')}</span>
                     <button class="confirm-btn">✓</button>
                     <span class="confirmed-icon">✓</span>
                 `;
-                // Если устройство уже голосовало за эту песню – сразу подсвечиваем как подтверждённую
+                // Если устройство уже голосовало за эту песню – подсвечиваем
                 if (votedSong === songName) {
                     li.classList.add('confirmed');
                 }
                 songList.appendChild(li);
             });
-            // Блокируем все строки, если голос уже отдан
+
+            // Блокируем голосование, если голос уже отдан
             if (votedSong) {
                 document.querySelectorAll('#songList li').forEach(li => li.style.cursor = 'default');
-                messageDiv.textContent = 'Вы уже проголосовали за: ' + votedSong;
+                messageDiv.textContent = `Вы проголосовали за: ${votedSong}`;
+                voterNumberDiv.textContent = `Ваш номер: ${myVoterNumber}`;
             } else {
                 messageDiv.textContent = '';
+                voterNumberDiv.textContent = '';
             }
         }
 
-        // Делегирование кликов
+        // Обработчик кликов по списку
         songList.addEventListener('click', function(e) {
             const li = e.target.closest('li');
             if (!li) return;
 
-            // Если голос уже отдан
+            // Если уже голосовали — игнорируем
             if (votedSong) return;
 
             const songName = li.querySelector('.song-text').textContent;
@@ -203,21 +235,47 @@
                 e.stopPropagation();
                 if (votedSong) return;
 
-                // Записываем голос
-                set(voterRef, { song: songName, timestamp: Date.now() })
-                    .then(() => {
+                // Атомарная операция: получить следующий номер, увеличить счётчик
+                runTransaction(nextNumberRef, (currentNumber) => {
+                    // currentNumber может быть null при первом запуске
+                    const next = (currentNumber || 0) + 1;
+                    if (next > MAX_VOTERS) {
+                        // Превышен лимит — не сохраняем номер
+                        return; // вернёт undefined, транзакция отменяется, возвращаем ошибку?
+                        // Вместо этого можно вернуть currentNumber, но тогда голос не примется, мы обработаем ниже
+                    }
+                    return next;
+                }).then((result) => {
+                    if (!result.committed) {
+                        // Транзакция не прошла (скорее всего из-за лимита)
+                        messageDiv.textContent = 'Голосование завершено, все 200 мест заняты.';
+                        return;
+                    }
+                    const newNumber = result.snapshot.val();
+                    // Сохраняем данные голоса
+                    set(voterRef, {
+                        song: songName,
+                        number: newNumber,
+                        timestamp: Date.now()
+                    }).then(() => {
                         votedSong = songName;
-                        // Обновляем визуал
+                        myVoterNumber = newNumber;
+                        localStorage.setItem('voterData', JSON.stringify({ song: votedSong, number: myVoterNumber }));
+
+                        // Визуал
                         document.querySelectorAll('#songList li').forEach(item => {
                             item.classList.remove('pre-selected', 'confirmed');
                             item.style.cursor = 'default';
                         });
                         li.classList.add('confirmed');
-                        messageDiv.textContent = 'Спасибо, ваш голос учтён!';
-                    })
-                    .catch(err => {
-                        messageDiv.textContent = 'Ошибка: ' + err.message;
+                        messageDiv.textContent = `Спасибо, ваш голос учтён!`;
+                        voterNumberDiv.textContent = `Ваш номер: ${newNumber}`;
+                    }).catch(err => {
+                        messageDiv.textContent = 'Ошибка записи голоса: ' + err.message;
                     });
+                }).catch(err => {
+                    messageDiv.textContent = 'Ошибка транзакции: ' + err.message;
+                });
                 return;
             }
 
