@@ -178,20 +178,19 @@
         saveBtn.addEventListener('click', async () => {
             const newSongs = getCurrentSongs();
             if (newSongs.length === 0) {
-                messageDiv.textContent = 'Добавьте хотя бы одну песню!';
-                return;
-            }
-            if (!confirm('Сохранить список? Это сбросит все текущие голоса.')) return;
+        messageDiv.textContent = 'Добавьте хотя бы одну песню!';
+            return;
+    }
+            if (!confirm('Сохранить список? Это сбросит все текущие голоса и номера.')) return;
 
             try {
-                // Сохраняем новый список песен
                 await set(songsRef, newSongs);
-                // Очищаем голоса
                 await set(votersRef, null);
-                messageDiv.textContent = '✅ Список сохранён, голоса сброшены!';
-            } catch (err) {
+                await set(ref(db, 'metadata/nextNumber'), null);   // ← сброс номеров
+                messageDiv.textContent = '✅ Список сохранён, голоса и номера сброшены!';
+    }        catch (err) {
                 messageDiv.textContent = '❌ Ошибка: ' + err.message;
-            }
+    }
         });
 
         // Добавить новую пустую строку
