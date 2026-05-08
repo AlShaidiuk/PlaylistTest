@@ -206,6 +206,25 @@
                 
             `;
         });
+
+        // === Настройки оформления ===
+            //import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+            //import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+            //const app = initializeApp(firebaseConfig); // используем уже существующую переменную app, если она есть, иначе создаём
+            //const db = getDatabase(app);
+            const settingsRef = ref(db, 'settings');
+                onValue(settingsRef, (snapshot) => {
+                    const data = snapshot.val() || {};
+                        document.body.style.backgroundColor = data.backgroundColor || '#f5f0e8';
+                if (data.backgroundTexture) {
+                    document.body.style.backgroundImage = `url(${data.backgroundTexture})`;
+                    document.body.style.backgroundRepeat = 'repeat';
+                } else {
+                    document.body.style.backgroundImage = '';
+                    document.body.style.backgroundRepeat = '';
+                }
+        });
     </script>
 </body>
 </html>
