@@ -126,40 +126,46 @@
         });
 
         function renderBars(votersData) {
-            if (!currentSongs.length) {
-                resultsDiv.innerHTML = '<p style="text-align:center">Нет песен для отображения</p>';
-                totalVotesSpan.textContent = 'Всего голосов: 0';
-                return;
-            }
-            const votes = {};
-            currentSongs.forEach(song => { votes[song] = 0; });
-            let total = 0;
-            Object.values(votersData).forEach(entry => {
-                if (entry.song && votes.hasOwnProperty(entry.song)) {
-                    votes[entry.song]++;
-                    total++;
-                }
-            });
-            resultsDiv.innerHTML = '';
-            currentSongs.forEach(song => {
-                const count = votes[song];
-                const percent = total === 0 ? 0 : (count / total) * 100;
-                resultsDiv.innerHTML += `
-                    <div class="song-bar">
-                        <div class="song-label">
-                            <span>${song.replace(/</g, '&lt;')}</span>
-                            <span>${count} голос(ов)</span>
-                        </div>
-                        <div class="progress">
-                            <div class="progress-fill" style="width: ${percent}%">
-                                ${percent > 5 ? Math.round(percent) + '%' : ''}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-            totalVotesSpan.textContent = `Всего голосов: ${total}`;
+    if (!currentSongs.length) {
+        resultsDiv.innerHTML = '<p style="text-align:center">Нет песен для отображения</p>';
+        totalVotesSpan.textContent = 'Всего голосов: 0';
+        return;
+    }
+
+    // Подсчитываем голоса
+    const votes = {};
+    currentSongs.forEach(song => { votes[song] = 0; });
+    let total = 0;
+    Object.values(votersData).forEach(entry => {
+        if (entry.song && votes.hasOwnProperty(entry.song)) {
+            votes[entry.song]++;
+            total++;
         }
+    });
+
+    // Сортируем песни по количеству голосов (по убыванию)
+    const sortedSongs = [...currentSongs].sort((a, b) => (votes[b] || 0) - (votes[a] || 0));
+
+    resultsDiv.innerHTML = '';
+    sortedSongs.forEach(song => {
+        const count = votes[song] || 0;
+        const percent = total === 0 ? 0 : (count / total) * 100;
+        resultsDiv.innerHTML += `
+            <div class="song-bar">
+                <div class="song-label">
+                    <span>${song.replace(/</g, '&lt;')}</span>
+                    <span>${count} голос(ов)</span>
+                </div>
+                <div class="progress">
+                    <div class="progress-fill" style="width: ${percent}%">
+                        ${percent > 5 ? Math.round(percent) + '%' : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    totalVotesSpan.textContent = `Всего голосов: ${total}`;
+}
 
         // Розыгрыш
         document.getElementById('drawBtn').addEventListener('click', () => {
