@@ -2,123 +2,190 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Что сегодня поем?</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f5f0e8;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            min-height: 100vh;
             display: flex;
             justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
+            align-items: flex-end;
+            /* Фон будет задаваться динамически через настройки (options.html) */
+            background-color: #f5f0e8;
+            background-repeat: repeat;
+            transition: background-color 0.3s ease;
+            padding-bottom: env(safe-area-inset-bottom, 20px);
         }
-        .playlist {
-            background-color: #ffffff;
-            padding: 30px 40px;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            max-width: 500px;
+
+        /* Контейнер action sheet */
+        .action-sheet {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 24px 24px 0 0;
+            box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.12);
             width: 100%;
+            max-width: 500px;
+            padding: 28px 24px 32px;
+            margin: 0 16px;
+            animation: slideUp 0.35s cubic-bezier(0.21, 1.02, 0.56, 1);
         }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
         h1 {
+            font-size: 22px;
+            font-weight: 600;
             text-align: center;
-            color: #333;
-            margin-top: 0;
-            margin-bottom: 25px;
-            font-size: 28px;
+            color: #1c1c1e;
+            margin-bottom: 8px;
         }
-        ol {
-            padding-left: 20px;
-            margin: 0;
-            list-style: decimal;
+
+        .instruction {
+            text-align: center;
+            font-size: 14px;
+            color: #8e8e93;
+            margin-bottom: 24px;
+            line-height: 1.4;
         }
+
+        /* Список песен */
+        ol#songList {
+            list-style: none;
+            counter-reset: song-counter;
+            padding: 0;
+        }
+
         li {
-            font-size: 18px;
-            padding: 12px 10px;
-            border-bottom: 1px dashed #e0e0e0;
-            color: #333;
+            counter-increment: song-counter;
+            font-size: 17px;
+            padding: 14px 12px;
+            margin-bottom: 8px;
+            border-radius: 14px;
+            background: #f2f2f7;
+            color: #1c1c1e;
             cursor: pointer;
-            transition: color 0.2s ease, background-color 0.2s ease;
-            user-select: none;
-            position: relative;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            transition: background 0.2s, color 0.2s, transform 0.1s;
+            user-select: none;
+            position: relative;
         }
-        li:last-child {
-            border-bottom: none;
+
+        li:active {
+            transform: scale(0.98);
         }
+
+        /* Номер песни (декоративный) */
+        li::before {
+            content: counter(song-counter);
+            font-weight: 500;
+            color: #8e8e93;
+            margin-right: 12px;
+            font-size: 16px;
+            min-width: 20px;
+        }
+
+        .song-text {
+            flex: 1;
+            font-weight: 500;
+        }
+
+        /* Предвыбранное состояние (State 2) */
         li.pre-selected {
-            color: #999999;
-            background-color: #f9f9f9;
+            background: #e8e8ed;
+            color: #3a3a3c;
         }
+
+        /* Подтверждённое состояние (State 3) */
         li.confirmed {
-            color: #555555;
-            background-color: #f0f0f0;
+            background: #e5e5ea;
+            color: #8e8e93;
             cursor: default;
         }
+
+        /* Кнопка подтверждения */
         .confirm-btn {
-            background: none;
-            border: 2px solid #4CAF50;
-            color: #4CAF50;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
-            width: 32px;
-            height: 32px;
-            font-size: 18px;
-            line-height: 1;
-            cursor: pointer;
+            border: 2px solid #34c759;
+            background: transparent;
+            color: #34c759;
+            font-size: 20px;
             display: none;
             align-items: center;
             justify-content: center;
-            transition: background-color 0.2s;
-            margin-left: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
             flex-shrink: 0;
+            margin-left: 12px;
         }
+
         .confirm-btn:hover {
-            background-color: #4CAF50;
+            background: #34c759;
             color: white;
         }
+
         li.pre-selected .confirm-btn {
             display: flex;
         }
+
+        /* Галочка подтверждённой песни */
         .confirmed-icon {
             display: none;
-            color: #4CAF50;
-            font-size: 20px;
-            margin-left: 15px;
+            color: #34c759;
+            font-size: 22px;
+            margin-left: 12px;
             flex-shrink: 0;
         }
+
         li.confirmed .confirmed-icon {
             display: block;
         }
-        .instruction {
-            text-align: center;
-            color: #888;
-            font-size: 14px;
-            margin-top: 20px;
-        }
+
+        /* Сообщение и номер */
         .message {
             text-align: center;
-            margin-top: 15px;
-            font-size: 16px;
-            color: #e74c3c;
+            margin-top: 20px;
+            font-size: 15px;
+            color: #ff3b30;
+            font-weight: 500;
         }
+
         .voter-number {
             text-align: center;
-            font-size: 20px;
-            color: #2ecc71;
-            margin-top: 10px;
+            margin-top: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            color: #007aff;
         }
     </style>
 </head>
 <body>
-    <div class="playlist">
-        <h1>🎤 Что сегодня поем?</h1>
+    <div class="action-sheet">
+        <h1>🎤 Что будем петь?</h1>
+        <p class="instruction">
+            Кликни на песню, чтобы выбрать,<br>а затем ✓ чтобы подтвердить выбор
+        </p>
         <ol id="songList"></ol>
-        <p class="instruction">👆 Кликни на песню, чтобы выбрать, затем ✓ чтобы подтвердить.</p>
         <div class="message" id="message"></div>
         <div class="voter-number" id="voterNumber"></div>
     </div>
@@ -144,11 +211,25 @@
         const songsRef = ref(db, 'playlist/songs');
         const votersRef = ref(db, 'voters');
         const nextNumberRef = ref(db, 'metadata/nextNumber');
+        const settingsRef = ref(db, 'settings');
         const MAX_VOTERS = 200;
 
         const songList = document.getElementById('songList');
         const messageDiv = document.getElementById('message');
         const voterNumberDiv = document.getElementById('voterNumber');
+
+        // Применяем настройки фона из Firebase (синхронизация с options.html)
+        onValue(settingsRef, (snapshot) => {
+            const data = snapshot.val() || {};
+            document.body.style.backgroundColor = data.backgroundColor || '#f5f0e8';
+            if (data.backgroundTexture) {
+                document.body.style.backgroundImage = `url(${data.backgroundTexture})`;
+                document.body.style.backgroundRepeat = 'repeat';
+            } else {
+                document.body.style.backgroundImage = '';
+                document.body.style.backgroundRepeat = '';
+            }
+        });
 
         // Генерируем или восстанавливаем ID устройства
         let deviceId = localStorage.getItem('voterDeviceId');
@@ -162,7 +243,7 @@
         let votedSong = null;
         let myVoterNumber = null;
 
-        // Проверяем, голосовало ли устройство ранее (данные в localStorage)
+        // Проверяем localStorage
         const storedVote = localStorage.getItem('voterData');
         if (storedVote) {
             const parsed = JSON.parse(storedVote);
@@ -170,7 +251,7 @@
             myVoterNumber = parsed.number;
         }
 
-        // Проверяем актуальность голоса в базе (вдруг админ сбросил?)
+        // Сверяем с базой (вдруг админ сбросил)
         get(voterRef).then(snapshot => {
             if (snapshot.exists()) {
                 const data = snapshot.val();
@@ -178,7 +259,6 @@
                 myVoterNumber = data.number;
                 localStorage.setItem('voterData', JSON.stringify({ song: votedSong, number: myVoterNumber }));
             } else {
-                // Если в базе нет записи, но в localStorage есть — значит сбросили
                 if (votedSong) {
                     localStorage.removeItem('voterData');
                     votedSong = null;
@@ -187,7 +267,7 @@
             }
         });
 
-        // Обновление списка песен
+        // Получаем список песен
         onValue(songsRef, (snapshot) => {
             currentSongs = snapshot.val() || [];
             renderSongList(currentSongs);
@@ -202,17 +282,19 @@
                     <button class="confirm-btn">✓</button>
                     <span class="confirmed-icon">✓</span>
                 `;
-                // Если устройство уже голосовало за эту песню – подсвечиваем
+                // Если уже голосовали за эту песню – показываем как подтверждённую
                 if (votedSong === songName) {
                     li.classList.add('confirmed');
                 }
                 songList.appendChild(li);
             });
 
-            // Блокируем голосование, если голос уже отдан
+            // Блокируем интерфейс, если голос уже отдан
             if (votedSong) {
-                document.querySelectorAll('#songList li').forEach(li => li.style.cursor = 'default');
-                messageDiv.textContent = `Вы проголосовали за: ${votedSong}`;
+                document.querySelectorAll('#songList li').forEach(li => {
+                    li.style.cursor = 'default';
+                });
+                messageDiv.textContent = '';
                 voterNumberDiv.textContent = `Ваш номер: ${myVoterNumber}`;
             } else {
                 messageDiv.textContent = '';
@@ -220,12 +302,12 @@
             }
         }
 
-        // Обработчик кликов по списку
+        // Делегирование кликов
         songList.addEventListener('click', function(e) {
             const li = e.target.closest('li');
             if (!li) return;
 
-            // Если уже голосовали — игнорируем
+            // Если голос уже отдан — игнорируем
             if (votedSong) return;
 
             const songName = li.querySelector('.song-text').textContent;
@@ -235,24 +317,19 @@
                 e.stopPropagation();
                 if (votedSong) return;
 
-                // Атомарная операция: получить следующий номер, увеличить счётчик
+                // Транзакция для получения уникального номера
                 runTransaction(nextNumberRef, (currentNumber) => {
-                    // currentNumber может быть null при первом запуске
                     const next = (currentNumber || 0) + 1;
                     if (next > MAX_VOTERS) {
-                        // Превышен лимит — не сохраняем номер
-                        return; // вернёт undefined, транзакция отменяется, возвращаем ошибку?
-                        // Вместо этого можно вернуть currentNumber, но тогда голос не примется, мы обработаем ниже
+                        return; // отмена транзакции
                     }
                     return next;
                 }).then((result) => {
                     if (!result.committed) {
-                        // Транзакция не прошла (скорее всего из-за лимита)
                         messageDiv.textContent = 'Голосование завершено, все 200 мест заняты.';
                         return;
                     }
                     const newNumber = result.snapshot.val();
-                    // Сохраняем данные голоса
                     set(voterRef, {
                         song: songName,
                         number: newNumber,
@@ -262,13 +339,13 @@
                         myVoterNumber = newNumber;
                         localStorage.setItem('voterData', JSON.stringify({ song: votedSong, number: myVoterNumber }));
 
-                        // Визуал
+                        // Визуал состояния 3
                         document.querySelectorAll('#songList li').forEach(item => {
                             item.classList.remove('pre-selected', 'confirmed');
                             item.style.cursor = 'default';
                         });
                         li.classList.add('confirmed');
-                        messageDiv.textContent = `Спасибо, ваш голос учтён!`;
+                        messageDiv.textContent = '';
                         voterNumberDiv.textContent = `Ваш номер: ${newNumber}`;
                     }).catch(err => {
                         messageDiv.textContent = 'Ошибка записи голоса: ' + err.message;
@@ -279,34 +356,17 @@
                 return;
             }
 
-            // Логика предвыбора
+            // Предвыбор (State 2)
             if (li.classList.contains('confirmed')) return;
+
             if (li.classList.contains('pre-selected')) {
                 li.classList.remove('pre-selected');
             } else {
-                document.querySelectorAll('#songList li.pre-selected').forEach(item => item.classList.remove('pre-selected'));
+                document.querySelectorAll('#songList li.pre-selected').forEach(item => {
+                    item.classList.remove('pre-selected');
+                });
                 li.classList.add('pre-selected');
             }
- 
-        });
-
-        // === Настройки оформления ===
-            //import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-            //import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-
-            //const app = initializeApp(firebaseConfig); // используем уже существующую переменную app, если она есть, иначе создаём
-            //const db = getDatabase(app);
-            const settingsRef = ref(db, 'settings');
-                onValue(settingsRef, (snapshot) => {
-                    const data = snapshot.val() || {};
-                        document.body.style.backgroundColor = data.backgroundColor || '#f5f0e8';
-                if (data.backgroundTexture) {
-                    document.body.style.backgroundImage = `url(${data.backgroundTexture})`;
-                    document.body.style.backgroundRepeat = 'repeat';
-                } else {
-                    document.body.style.backgroundImage = '';
-                    document.body.style.backgroundRepeat = '';
-                }
         });
     </script>
 </body>
