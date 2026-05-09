@@ -16,14 +16,13 @@
             min-height: 100vh;
             display: flex;
             justify-content: center;
-            align-items: center;   /* ← панель по центру вертикали */
+            align-items: center;
             background-color: #f5f0e8;
             background-repeat: repeat;
             transition: background-color 0.3s ease;
             padding: 20px;
         }
 
-        /* Контейнер action sheet */
         .action-sheet {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(20px);
@@ -38,14 +37,8 @@
         }
 
         @keyframes slideUp {
-            from {
-                transform: translateY(40px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
+            from { transform: translateY(40px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
 
         h1 {
@@ -64,17 +57,15 @@
             line-height: 1.4;
         }
 
-        /* Номер участника – теперь между заголовком и списком */
         .voter-number {
             text-align: center;
             font-size: 20px;
             font-weight: 600;
-            color: #ff3b30;       /* ← красный цвет */
+            color: #ff3b30;
             margin-bottom: 20px;
-            display: none;        /* скрыт, пока нет номера */
+            display: none;
         }
 
-        /* Список песен */
         ol#songList {
             list-style: none;
             counter-reset: song-counter;
@@ -84,7 +75,7 @@
         li {
             counter-increment: song-counter;
             font-size: 17px;
-            padding: 14px 12px;
+            padding: 0; /* убираем внутренние отступы, теперь за ширину отвечает внутренний контейнер */
             margin-bottom: 8px;
             border-radius: 14px;
             background: #f2f2f7;
@@ -92,14 +83,30 @@
             cursor: pointer;
             display: flex;
             align-items: center;
-            justify-content: space-between;
             transition: background 0.2s, color 0.2s, transform 0.1s;
             user-select: none;
             position: relative;
+            overflow: hidden; /* чтобы скруглялись угли у полоски */
         }
 
         li:active {
             transform: scale(0.98);
+        }
+
+        /* Основная широкая кнопка выбора песни */
+        .song-button {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            padding: 14px 12px;
+            background: transparent;
+            border: none;
+            font-size: inherit;
+            font-family: inherit;
+            color: inherit;
+            cursor: pointer;
+            text-align: left;
+            transition: background 0.2s, color 0.2s, padding-right 0.2s;
         }
 
         li::before {
@@ -116,14 +123,21 @@
             font-weight: 500;
         }
 
-        /* Предвыбранное состояние (State 2) */
-        li.pre-selected {
+        /* Состояние 2: кнопка выбора становится уже, чтобы освободить место */
+        li.pre-selected .song-button {
+            padding-right: 50px; /* освобождаем место для кнопки подтверждения */
             background: #e8e8ed;
             color: #3a3a3c;
         }
 
-        /* Подтверждённое состояние (State 3) */
+        /* Состояние 3: подтвержденная песня */
         li.confirmed {
+            background: #e5e5ea;
+            color: #8e8e93;
+            cursor: default;
+        }
+
+        li.confirmed .song-button {
             background: #e5e5ea;
             color: #8e8e93;
             cursor: default;
@@ -131,6 +145,10 @@
 
         /* Кнопка подтверждения */
         .confirm-btn {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
             width: 36px;
             height: 36px;
             border-radius: 50%;
@@ -143,8 +161,11 @@
             justify-content: center;
             cursor: pointer;
             transition: all 0.2s;
-            flex-shrink: 0;
-            margin-left: 12px;
+            z-index: 2;
+        }
+
+        li.pre-selected .confirm-btn {
+            display: flex;
         }
 
         .confirm-btn:hover {
@@ -152,24 +173,22 @@
             color: white;
         }
 
-        li.pre-selected .confirm-btn {
-            display: flex;
-        }
-
-        /* Галочка подтверждённой песни */
+        /* Галочка подтвержденной песни */
         .confirmed-icon {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
             display: none;
             color: #34c759;
             font-size: 22px;
-            margin-left: 12px;
-            flex-shrink: 0;
+            z-index: 2;
         }
 
         li.confirmed .confirmed-icon {
             display: block;
         }
 
-        /* Сообщение об ошибке */
         .message {
             text-align: center;
             margin-top: 20px;
@@ -185,11 +204,8 @@
         <p class="instruction">
             Кликни на песню, чтобы выбрать,<br>а затем ✓ чтобы подтвердить выбор
         </p>
-        <!-- Номер участника (красный, показывается после голосования) -->
         <div class="voter-number" id="voterNumber"></div>
-
         <ol id="songList"></ol>
-
         <div class="message" id="message"></div>
     </div>
 
@@ -197,15 +213,14 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
         import { getDatabase, ref, onValue, get, set, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-        // ⚠️ Замени на СВОЙ конфиг Firebase
         const firebaseConfig = {
-            apiKey: "AIzaSyAfxfl7oncihM8TUHbfgi9lr95St-KNRX8",
-            authDomain: "songlisttestproj.firebaseapp.com",
-            databaseURL: "https://songlisttestproj-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "songlisttestproj",
-            storageBucket: "songlisttestproj.firebasestorage.app",
-            messagingSenderId: "134407495087",
-            appId: "1:134407495087:web:c450f82c497e785eca235a"
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            databaseURL: "YOUR_DATABASE_URL",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -221,7 +236,6 @@
         const messageDiv = document.getElementById('message');
         const voterNumberDiv = document.getElementById('voterNumber');
 
-        // Применяем настройки фона (цвет и текстура из options.html)
         onValue(settingsRef, (snapshot) => {
             const data = snapshot.val() || {};
             document.body.style.backgroundColor = data.backgroundColor || '#f5f0e8';
@@ -234,7 +248,6 @@
             }
         });
 
-        // Генерируем или восстанавливаем ID устройства
         let deviceId = localStorage.getItem('voterDeviceId');
         if (!deviceId) {
             deviceId = 'device_' + Math.random().toString(36).substr(2, 9);
@@ -246,7 +259,6 @@
         let votedSong = null;
         let myVoterNumber = null;
 
-        // Проверяем сохранённый голос (localStorage)
         const storedVote = localStorage.getItem('voterData');
         if (storedVote) {
             const parsed = JSON.parse(storedVote);
@@ -254,7 +266,6 @@
             myVoterNumber = parsed.number;
         }
 
-        // Сверяем localStorage с Firebase (если админ сбросил голоса)
         get(voterRef).then(snapshot => {
             if (snapshot.exists()) {
                 const data = snapshot.val();
@@ -270,7 +281,6 @@
             }
         });
 
-        // Получаем список песен из Firebase
         onValue(songsRef, (snapshot) => {
             currentSongs = snapshot.val() || [];
             renderSongList(currentSongs);
@@ -281,7 +291,9 @@
             songs.forEach(songName => {
                 const li = document.createElement('li');
                 li.innerHTML = `
-                    <span class="song-text">${songName.replace(/</g, '&lt;')}</span>
+                    <div class="song-button">
+                        <span class="song-text">${songName.replace(/</g, '&lt;')}</span>
+                    </div>
                     <button class="confirm-btn">✓</button>
                     <span class="confirmed-icon">✓</span>
                 `;
@@ -291,39 +303,33 @@
                 songList.appendChild(li);
             });
 
-            // Отображение номера и блокировка интерфейса
             if (votedSong) {
                 document.querySelectorAll('#songList li').forEach(li => {
                     li.style.cursor = 'default';
                 });
                 messageDiv.textContent = '';
                 voterNumberDiv.textContent = `Ваш номер: ${myVoterNumber}`;
-                voterNumberDiv.style.display = 'block';   // показываем номер
+                voterNumberDiv.style.display = 'block';
             } else {
                 messageDiv.textContent = '';
-                voterNumberDiv.style.display = 'none';    // скрываем
+                voterNumberDiv.style.display = 'none';
             }
         }
 
-        // Обработка кликов по списку песен
         songList.addEventListener('click', function(e) {
             const li = e.target.closest('li');
             if (!li) return;
-
-            // Если голос уже отдан — игнорируем клики
             if (votedSong) return;
 
             const songName = li.querySelector('.song-text').textContent;
 
-            // Нажатие на кнопку подтверждения
             if (e.target.closest('.confirm-btn')) {
                 e.stopPropagation();
                 if (votedSong) return;
 
-                // Получаем уникальный номер через транзакцию
                 runTransaction(nextNumberRef, (currentNumber) => {
                     const next = (currentNumber || 0) + 1;
-                    if (next > MAX_VOTERS) return;   // отмена, лимит исчерпан
+                    if (next > MAX_VOTERS) return;
                     return next;
                 }).then((result) => {
                     if (!result.committed) {
@@ -340,7 +346,6 @@
                         myVoterNumber = newNumber;
                         localStorage.setItem('voterData', JSON.stringify({ song: votedSong, number: myVoterNumber }));
 
-                        // Переход в состояние 3
                         document.querySelectorAll('#songList li').forEach(item => {
                             item.classList.remove('pre-selected', 'confirmed');
                             item.style.cursor = 'default';
@@ -358,7 +363,6 @@
                 return;
             }
 
-            // Предвыбор (State 2)
             if (li.classList.contains('confirmed')) return;
 
             if (li.classList.contains('pre-selected')) {
